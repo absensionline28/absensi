@@ -3,137 +3,270 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Absensi Masuk Pulang</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>Absensi Rapi</title>
+<script type="importmap">
+{"imports": {"supabase": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm", "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/package/xlsx.mjs"}}
+</script>
 <style>
-body{font-family:Arial;padding:20px;max-width:500px;margin:auto;background:#f4f4f4}
-.card{background:white;padding:20px;border-radius:12px;box-shadow:0 2px 5px rgba(0,0,0,0.1);margin-bottom:15px}
-input,button{width:100%;padding:12px;margin:8px 0;border-radius:8px;border:1px solid #ccc;font-size:16px}
-button{background:#28a745;color:white;border:none;cursor:pointer;font-weight:bold}
-button:disabled{background:gray}
-video,img{width:100%;border-radius:8px;margin-top:10px}
-#riwayat div{border-bottom:1px solid #eee;padding:8px 0;font-size:14px}
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+*{box-sizing:border-box;font-family:'Poppins',sans-serif}
+body{margin:0;min-height:100vh;background:linear-gradient(135deg,#667eea 0%,#764ba2 50%,#f093fb 100%);padding:15px;display:flex;align-items:center;justify-content:center}
+.glass{background:rgba(255,255,255,0.22);backdrop-filter:blur(15px);border:1px solid rgba(255,255,255,0.3);box-shadow:0 8px 32px rgba(0,0,0,0.1);border-radius:22px;padding:25px;width:100%;max-width:430px}
+h2{color:#fff;text-align:center;font-size:26px;font-weight:700;margin:0 0 18px}
+input{width:100%;padding:14px;margin-top:12px;border:none;border-radius:14px;font-size:15px;background:rgba(255,255,255,0.95);outline:none}
+.btn{width:100%;padding:15px;margin-top:12px;border:none;border-radius:14px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;transition:all 0.25s}
+.btn:hover{transform:scale(1.02)}
+.btn-hijau{background:linear-gradient(90deg,#27ae60,#2ecc71)}
+.btn-merah{background:linear-gradient(90deg,#e74c3c,#c0392b)}
+.btn-ungu{background:linear-gradient(90deg,#8e44ad,#9b59b6)}
+.btn-oren{background:linear-gradient(90deg,#f39c12,#e67e22)}
+.btn-kuning{background:#f1c40f;color:#2c3e50}
+.btn-putih{background:rgba(255,255,255,0.95);color:#667eea}
+.hidden{display:none}
+video{width:100%;border-radius:14px;margin-top:12px;border:3px solid #fff}
+#pesan{color:#fff;text-align:center;margin-top:12px;font-weight:600;min-height:24px;font-size:14px}
+
+/* INI KUNCINYA BIAR TABEL GA PECAH */
+.table-wrap{overflow-x:auto;margin-top:15px;border-radius:16px}
+table{border-collapse:separate;border-spacing:0;width:100%;color:#fff;font-size:12px;min-width:380px}
+th,td{padding:10px 6px;text-align:center;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,0.2)}
+th{background:rgba(255,255,255,0.25);font-weight:600;font-size:12px;position:sticky;top:0}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,0.1)}
+
+.foto-box{width:45px;height:45px;margin:auto}
+.foto-box img{width:42px;height:42px;object-fit:cover;border-radius:50%;border:2px solid #fff;cursor:pointer;transition:transform 0.2s}
+.foto-box img:active{transform:scale(3);position:relative;z-index:999;box-shadow:0 0 25px rgba(0,0,0,0.6)}
+.note{color:rgba(255,255,255,0.85);font-size:11px;text-align:center;margin-top:8px}
+
+.card-riwayat{background:rgba(255,255,255,0.15);border-radius:18px;padding:15px}
 </style>
 </head>
 <body>
 
-<h2>Absensi Foto</h2>
-
-<div class="card">
-<input type="text" id="nama" placeholder="Masukkan Nama Lengkap">
-<video id="video" autoplay playsinline></video>
-<canvas id="canvas" style="display:none"></canvas>
-<button id="btnMasuk">📸 JEPRET MASUK</button>
-<button id="btnPulang" disabled>📸 JEPRET PULANG</button>
-<div id="status"></div>
+<!-- LOGIN -->
+<div id="loginPage" class="glass">
+  <h2>Absensi Online</h2>
+  <input id="email" type="email" placeholder="Email" value="admin@kantor.com">
+  <input id="pass" type="password" placeholder="Password" value="123456">
+  <input id="namaManual" type="text" placeholder="Ketik Nama - WAJIB SAMA TIAP LOGIN" value="Budi Santoso">
+  <button id="btnLogin" class="btn btn-putih">LOGIN</button>
+  <div class="note">Nama harus sama persis biar data ga ketukar</div>
 </div>
 
-<div class="card">
-<h3>Riwayat Hari Ini</h3>
-<div id="riwayat">Loading...</div>
+<!-- ABSEN -->
+<div id="absenPage" class="hidden glass">
+  <h2>Halo, <span id="namaTampil"></span> 👋</h2>
+
+  <video id="video" class="hidden" autoplay playsinline></video>
+  <canvas id="canvas" class="hidden"></canvas>
+
+  <div id="menuAbsen">
+    <button id="btnMasuk" class="btn btn-hijau">ABSEN MASUK + SELFIE</button>
+    <button id="btnPulang" class="btn btn-merah">ABSEN PULANG + SELFIE</button>
+    <button id="btnRiwayat" class="btn btn-ungu">LIHAT RIWAYAT</button>
+    <button id="btnLogout" class="btn btn-putih">LOGOUT</button>
+  </div>
+
+  <div id="menuKamera" class="hidden">
+    <p id="infoKamera" style="color:#fff;text-align:center;font-size:13px;margin:10px 0">📷 Kamera: Depan/Selfie</p>
+    <button id="btnGantiKamera" class="btn btn-kuning">🔄 GANTI KAMERA</button>
+    <button id="btnJepret" class="btn btn-kuning">📸 JEPRET FOTO</button>
+  </div>
+
+  <div id="pesan"></div>
+
+  <!-- RIWAYAT CARD -->
+  <div id="boxRiwayat" class="hidden">
+    <div class="card-riwayat">
+      <h3 style="color:#fff;text-align:center;margin:0 0 12px;font-size:16px">Riwayat - <span id="namaFilter"></span></h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:22%">Tanggal</th>
+              <th style="width:18%">Masuk</th>
+              <th style="width:16%">Foto</th>
+              <th style="width:18%">Pulang</th>
+              <th style="width:16%">Foto</th>
+            </tr>
+          </thead>
+          <tbody id="isiRiwayat"></tbody>
+        </table>
+      </div>
+      <p class="note">💡 Tahan foto buat zoom</p>
+    </div>
+    <button id="btnExport" class="btn btn-oren">📊 DOWNLOAD EXCEL</button>
+  </div>
 </div>
 
-<script>
+<script type="module">
+import { createClient } from 'supabase'
+import * as XLSX from 'xlsx'
+
 const SUPABASE_URL = 'https://gdvrrwalbchwmgaucttl.supabase.co'
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkdnJyd2FsYmNod21nYXVjdHRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MzM5MDQsImV4cCI6MjA5NjUwOTkwNH0._lrG5HkGdStq2c3Zbgxbwg8BJ6wlE3TleI69jjvzxjU'
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
-const video = document.getElementById('video')
-const canvas = document.getElementById('canvas')
-const namaInput = document.getElementById('nama')
-const btnMasuk = document.getElementById('btnMasuk')
-const btnPulang = document.getElementById('btnPulang')
-const statusDiv = document.getElementById('status')
-const riwayatDiv = document.getElementById('riwayat')
+let userId = null, namaAktif = null, dataRiwayat = [], stream = null, modeAbsen = '', kameraDepan = 'user'
+const video = document.getElementById('video'), canvas = document.getElementById('canvas')
 
-// Nyalain kamera
-navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}}).then(stream=>{
+function waktuWIB(){
+  return new Date().toLocaleString('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+  }).replace(/\//g,'-').replace(',','')
+}
+
+async function bukaKamera(mode){
+  modeAbsen = mode
+  document.getElementById('menuAbsen').classList.add('hidden')
+  document.getElementById('menuKamera').classList.remove('hidden')
+  video.classList.remove('hidden')
+  updateInfoKamera()
+  if(stream) stream.getTracks().forEach(t=>t.stop())
+  stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:kameraDepan}})
   video.srcObject = stream
-}).catch(e=>statusDiv.innerText='Error kamera: '+e.message)
-
-let currentNama = ''
-let today = new Date().toISOString().split('T')[0] // format 2026-04-13
-
-namaInput.addEventListener('input', e=>{
-  currentNama = e.target.value.trim()
-  cekStatusHariIni()
-})
-
-async function ambilFoto() {
-  canvas.width = video.videoWidth
-  canvas.height = video.videoHeight
-  canvas.getContext('2d').drawImage(video, 0, 0)
-  return canvas.toDataURL('image/jpeg', 0.8)
 }
 
-async function uploadFoto(base64, jenis) {
-  const blob = await fetch(base64).then(r=>r.blob())
-  const fileName = `${currentNama}_${today}_${jenis}_${Date.now()}.jpg`
-  const {data, error} = await supabase.storage.from('absensi-foto').upload(fileName, blob)
-  if(error) throw error
-  const {data:url} = supabase.storage.from('absensi-foto').getPublicUrl(fileName)
-  return url.publicUrl
+function updateInfoKamera(){
+  document.getElementById('infoKamera').innerText = kameraDepan==='user'? '📷 Kamera: Depan/Selfie' : '📷 Kamera: Belakang/Utama'
 }
 
-async function cekStatusHariIni() {
-  if(!currentNama) return
-  const {data} = await supabase.from('absensi').select('*').eq('nama', currentNama).eq('tanggal', today).single()
-  if(data) {
-    if(data.waktu_masuk &&!data.waktu_pulang) {
-      btnMasuk.disabled = true
-      btnPulang.disabled = false
-      statusDiv.innerText = 'Sudah absen masuk. Silakan absen pulang.'
-    } else if(data.waktu_pulang) {
-      btnMasuk.disabled = true
-      btnPulang.disabled = true
-      statusDiv.innerText = 'Sudah absen masuk & pulang hari ini.'
-    }
-    tampilRiwayat(data)
-  } else {
-    btnMasuk.disabled = false
-    btnPulang.disabled = true
-    statusDiv.innerText = ''
-    riwayatDiv.innerText = 'Belum absen hari ini'
+document.getElementById('btnGantiKamera').onclick = async () => {
+  kameraDepan = kameraDepan==='user'? 'environment' : 'user'
+  updateInfoKamera()
+  if(stream) stream.getTracks().forEach(t=>t.stop())
+  stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:kameraDepan}})
+  video.srcObject = stream
+}
+
+function tutupKamera(){
+  if(stream) stream.getTracks().forEach(t=>t.stop())
+  video.classList.add('hidden')
+  document.getElementById('menuKamera').classList.add('hidden')
+  document.getElementById('menuAbsen').classList.remove('hidden')
+}
+
+async function uploadFoto(blob){
+  try{
+    const namaFolder = namaAktif.replace(/\s/g,'_')
+    const namaFile = `${namaFolder}/${modeAbsen}_${Date.now()}.jpg`
+    const {error} = await supabase.storage.from('absensi-foto').upload(namaFile, blob)
+    if(error) throw error
+    const {data} = supabase.storage.from('absensi-foto').getPublicUrl(namaFile)
+    return data.publicUrl
+  } catch(e){
+    alert('Gagal upload foto: ' + e.message)
+    throw e
   }
 }
 
-btnMasuk.onclick = async () => {
-  if(!currentNama) return alert('Isi nama dulu!')
-  btnMasuk.disabled = true
-  statusDiv.innerText = 'Upload foto masuk...'
-  const foto = await ambilFoto()
-  const url = await uploadFoto(foto, 'masuk')
-  await supabase.from('absensi').insert({
-    nama: currentNama,
-    tanggal: today,
-    waktu_masuk: new Date().toISOString(),
-    foto_masuk_url: url
+document.getElementById('btnLogin').onclick = async () => {
+  const email = document.getElementById('email').value.trim()
+  const pass = document.getElementById('pass').value
+  namaAktif = document.getElementById('namaManual').value.trim()
+  if(!email ||!pass ||!namaAktif){document.getElementById('pesan').innerText='Email, Password & Nama wajib!';return}
+
+  const {data, error} = await supabase.auth.signInWithPassword({email, password: pass})
+  if(error){document.getElementById('pesan').innerText = 'Error: ' + error.message}
+  else {
+    userId = data.user.id
+    document.getElementById('namaTampil').innerText = namaAktif
+    document.getElementById('namaFilter').innerText = namaAktif
+    document.getElementById('loginPage').classList.add('hidden')
+    document.getElementById('absenPage').classList.remove('hidden')
+  }
+}
+
+document.getElementById('btnMasuk').onclick = () => bukaKamera('masuk')
+document.getElementById('btnPulang').onclick = () => bukaKamera('pulang')
+
+document.getElementById('btnJepret').onclick = async () => {
+  const pesan = document.getElementById('pesan')
+  pesan.innerText = 'Ambil foto...'
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+  const ctx = canvas.getContext('2d')
+  ctx.drawImage(video, 0, 0)
+  const waktu = waktuWIB()
+  ctx.fillStyle = 'rgba(0,0,0,0.7)'
+  ctx.fillRect(0, canvas.height-100, canvas.width, 100)
+  ctx.fillStyle = '#fff'
+  ctx.font = `bold ${Math.max(16, canvas.width/28)}px Poppins`
+  ctx.fillText(`Nama: ${namaAktif}`, 15, canvas.height-75)
+  ctx.fillText(`Waktu: ${waktu} WIB`, 15, canvas.height-45)
+  ctx.fillStyle = '#f1c40f'
+  ctx.font = `${Math.max(12, canvas.width/32)}px Poppins`
+  ctx.fillText(`Kamera: ${kameraDepan==='user'?'Depan':'Belakang'}`, 15, canvas.height-20)
+
+  canvas.toBlob(async (blob) => {
+    try{
+      const urlFoto = await uploadFoto(blob)
+      if(modeAbsen === 'masuk'){
+        await supabase.from('absensi').insert({user_id:userId,nama:namaAktif,waktu_masuk:waktu,foto_masuk:urlFoto,status:'masuk'})
+        pesan.innerText = '✅ Absen Masuk Berhasil!'
+      } else {
+        const {data: d} = await supabase.from('absensi').select('id').eq('nama',namaAktif).eq('status','masuk').order('id',{ascending:false}).limit(1).single()
+        if(!d){pesan.innerText='⚠️ Belum absen masuk!';tutupKamera();return}
+        await supabase.from('absensi').update({waktu_pulang:waktu,foto_pulang:urlFoto,status:'pulang'}).eq('id',d.id)
+        pesan.innerText = '✅ Absen Pulang Berhasil!'
+      }
+      setTimeout(tutupKamera, 1200)
+    } catch(e){pesan.innerText='Error: '+e.message;tutupKamera()}
+  }, 'image/jpeg', 0.8)
+}
+
+document.getElementById('btnLogout').onclick = async () => {await supabase.auth.signOut();location.reload()}
+
+document.getElementById('btnRiwayat').onclick = async () => {
+  document.getElementById('boxRiwayat').classList.remove('hidden')
+  const tbody = document.getElementById('isiRiwayat')
+  tbody.innerHTML = '<tr><td colspan=5 style="padding:15px">Loading...</td></tr>'
+
+  const {data, error} = await supabase.from('absensi')
+  .select('nama,waktu_masuk,waktu_pulang,foto_masuk,foto_pulang')
+  .eq('nama', namaAktif)
+  .order('id', {ascending:false})
+  .limit(100)
+
+  if(error){tbody.innerHTML = `<tr><td colspan=5>Error: ${error.message}</td></tr>`;return}
+  if(!data.length){tbody.innerHTML = `<tr><td colspan=5 style="padding:15px">Belum ada data</td></tr>`;return}
+
+  dataRiwayat = data
+  tbody.innerHTML = ''
+  data.forEach(r => {
+    const masuk = r.waktu_masuk? r.waktu_masuk.split(' ')[1].slice(0,5) : '-'
+    const pulang = r.waktu_pulang? r.waktu_pulang.split(' ')[1].slice(0,5) : '-'
+    const tgl = r.waktu_masuk? r.waktu_masuk.split(' ')[0] : '-'
+    const fotoM = r.foto_masuk? `<div class="foto-box"><img src="${r.foto_masuk}" onerror="this.src='https://placehold.co/42x42?text=?'"></div>` : '-'
+    const fotoP = r.foto_pulang? `<div class="foto-box"><img src="${r.foto_pulang}" onerror="this.src='https://placehold.co/42x42?text=?'"></div>` : '-'
+    tbody.innerHTML += `<tr>
+      <td>${tgl}</td>
+      <td style="color:#2ecc71;font-weight:600">${masuk}</td>
+      <td>${fotoM}</td>
+      <td style="color:#e74c3c;font-weight:600">${pulang}</td>
+      <td>${fotoP}</td>
+    </tr>`
   })
-  statusDiv.innerText = 'Absen masuk berhasil!'
-  cekStatusHariIni()
 }
 
-btnPulang.onclick = async () => {
-  btnPulang.disabled = true
-  statusDiv.innerText = 'Upload foto pulang...'
-  const foto = await ambilFoto()
-  const url = await uploadFoto(foto, 'pulang')
-  const {data} = await supabase.from('absensi').select('id').eq('nama', currentNama).eq('tanggal', today).single()
-  await supabase.from('absensi').update({
-    waktu_pulang: new Date().toISOString(),
-    foto_pulang_url: url
-  }).eq('id', data.id)
-  statusDiv.innerText = 'Absen pulang berhasil!'
-  cekStatusHariIni()
-}
-
-async function tampilRiwayat(data) {
-  riwayatDiv.innerHTML = `
-    <b>Masuk:</b> ${data.waktu_masuk? new Date(data.waktu_masuk).toLocaleTimeString() : '-'}<br>
-    <img src="${data.foto_masuk_url}" style="max-width:100px"><br>
-    <b>Pulang:</b> ${data.waktu_pulang? new Date(data.waktu_pulang).toLocaleTimeString() : '-'}<br>
-    ${data.foto_pulang_url? `<img src="${data.foto_pulang_url}" style="max-width:100px">` : ''}
-  `
+document.getElementById('btnExport').onclick = () => {
+  if(!dataRiwayat.length){alert('Ambil riwayat dulu!');return}
+  const arr = dataRiwayat.map(r => ({
+    'Nama': r.nama,
+    'Tanggal': r.waktu_masuk? r.waktu_masuk.split(' ')[0] : '-',
+    'Jam Masuk': r.waktu_masuk? r.waktu_masuk.split(' ')[1] : '-',
+    'Foto Masuk': r.foto_masuk || '-',
+    'Jam Pulang': r.waktu_pulang? r.waktu_pulang.split(' ')[1] : '-',
+    'Foto Pulang': r.foto_pulang || '-'
+  }))
+  const ws = XLSX.utils.json_to_sheet(arr)
+  ws['!cols'] = [{wch:15},{wch:12},{wch:10},{wch:50},{wch:10},{wch:50}]
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Riwayat')
+  XLSX.writeFile(wb, `absensi_${namaAktif.replace(/\s/g,'_')}.xlsx`)
 }
 </script>
 </body>
