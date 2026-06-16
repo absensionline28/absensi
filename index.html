@@ -1,225 +1,61 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Absensi Online</title>
+<title>Absen</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-body{font-family:sans-serif;background:#0f172a;color:#e2e8f0;margin:0;padding:20px;display:flex;justify-content:center}
-.container{max-width:500px;width:100%;background:#1e293b;padding:25px;border-radius:15px}
-h2{text-align:center;margin-top:0}
-input,button,select{width:100%;padding:12px;margin:8px 0;border-radius:8px;border:none;font-size:16px}
-input,select{background:#334155;color:#e2e8f0}
-button{background:#3b82f6;color:white;font-weight:bold;cursor:pointer}
-button:disabled{background:#475569}
-video{width:100%;border-radius:10px;background:black;margin:10px 0}
-.hidden{display:none}
-#riwayat{margin-top:20px}
-.item{background:#334155;padding:10px;border-radius:8px;margin:5px 0}
-img.thumb{width:60px;height:60px;object-fit:cover;border-radius:5px;vertical-align:middle;margin-right:10px}
-.logout{text-align:right;margin-bottom:10px}
-.logout button{width:auto;padding:5px 15px;font-size:14px;background:#ef4444}
+body{background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:30px}
+input,button{width:90%;padding:15px;margin:10px;font-size:18px;border-radius:10px;border:0}
+input{background:#333;color:#fff}
+button{background:#0af;color:#000;font-weight:bold}
+video{width:90%;border-radius:10px;background:#000}
 </style>
 </head>
 <body>
-<div class="container">
-
-<!-- LOGIN -->
-<div id="loginBox">
-<h2>Login Absensi</h2>
-<input type="email" id="email" placeholder="Email" value="admin@kantor.com">
-<input type="password" id="password" placeholder="Password" value="Admin123">
-<button onclick="login()">LOGIN</button>
-<p id="loginMsg" style="color:#f87171"></p>
-</div>
-
-<!-- ABSEN -->
-<div id="absenBox" class="hidden">
-<div class="logout"><button onclick="logout()">Logout</button></div>
-<h2>Halo, <span id="namaUser"></span> 👋</h2>
-
-<input type="text" id="nama" placeholder="Ketik nama kamu">
-
-<video id="video" autoplay playsinline></video>
-<button onclick="gantiKamera()">🔄 Ganti Kamera</button>
+<h2>ABSENSI</h2>
+<input id="nama" placeholder="TULIS NAMA KAMU">
 <br>
-<button id="btnMasuk" onclick="absen('masuk')">✅ ABSEN MASUK</button>
-<button id="btnPulang" onclick="absen('pulang')">🏠 ABSEN PULANG</button>
-
-<p id="status"></p>
-
-<h3>Riwayat Absen Kamu</h3>
-<div id="riwayat">Loading...</div>
-</div>
-
-</div>
+<video id="cam" autoplay playsinline></video>
+<br>
+<button onclick="absen('masuk')">ABSEN MASUK</button>
+<button onclick="absen('pulang')">ABSEN PULANG</button>
+<p id="pesan"></p>
 
 <script>
-const SUPABASE_URL = 'https://gdvrrwalbchwmgaucttl.supabase.co'
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkdnJyd2FsYmNod21nYXVjdHRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MzM5MDQsImV4cCI6MjA5NjUwOTkwNH0._lrG5HkGdStq2c3Zbgxbwg8BJ6wlE3TleI69jjvzxjU'
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+// GANTI 2 BARIS INI AJA PAKE PUNYAMU
+const URL = 'https://gdvrrwalbchwmgaucttl.supabase.co'
+const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkdnJyd2FsYmNod21nYXVjdHRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MzM5MDQsImV4cCI6MjA5NjUwOTkwNH0._lrG5HkGdStq2c3Zbgxbwg8BJ6wlE3TleI69jjvzxjU'
+const db = supabase.createClient(URL, KEY)
 
-let stream = null
-let facingMode = 'user'
-let currentUser = null
-
-// Cek session
-supabase.auth.getSession().then(({data})=>{
-  if(data.session) showAbsen(data.session.user)
+navigator.mediaDevices.getUserMedia({video:true}).then(s=>{
+  document.getElementById('cam').srcObject = s
 })
 
-// LOGIN
-async function login(){
-  const email = document.getElementById('email').value
-  const pass = document.getElementById('password').value
-  const msg = document.getElementById('loginMsg')
-
-  const {data, error} = await supabase.auth.signInWithPassword({email, password: pass})
-  if(error){
-    msg.textContent = 'Login gagal: ' + error.message
-  } else {
-    showAbsen(data.user)
-  }
+async function absen(jenis){
+  const nama = document.getElementById('nama').value
+  const pesan = document.getElementById('pesan')
+  
+  if(!nama){alert('ISI NAMA DULU');return}
+  
+  pesan.textContent = 'Ngirim...'
+  
+  const video = document.getElementById('cam')
+  const c = document.createElement('canvas')
+  c.width = video.videoWidth
+  c.height = video.videoHeight
+  c.getContext('2d').drawImage(video,0,0)
+  const blob = await fetch(c.toDataURL()).then(r=>r.blob())
+  
+  const file = nama + '_' + Date.now() + '.jpg'
+  await db.storage.from('ABSENSI-FOTO').upload(file, blob)
+  const url = db.storage.from('ABSENSI-FOTO').getPublicUrl(file).data.publicUrl
+  
+  await db.from('absensi').insert({nama:nama, status:jenis, foto_url:url, waktu_absen:new Date()})
+  
+  pesan.textContent = '✅ BERHASIL ABSEN ' + jenis.toUpperCase()
 }
-
-// LOGOUT
-async function logout(){
-  await supabase.auth.signOut()
-  document.getElementById('loginBox').classList.remove('hidden')
-  document.getElementById('absenBox').classList.add('hidden')
-  if(stream) stream.getTracks().forEach(t=>t.stop())
-}
-
-// MUNCULIN MENU ABSEN
-function showAbsen(user){
-  currentUser = user
-  document.getElementById('loginBox').classList.add('hidden')
-  document.getElementById('absenBox').classList.remove('hidden')
-  document.getElementById('namaUser').textContent = user.email.split('@')[0]
-  bukaKamera()
-  loadRiwayat()
-}
-
-// KAMERA
-async function bukaKamera(){
-  if(stream) stream.getTracks().forEach(t=>t.stop())
-  try{
-    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode}})
-    document.getElementById('video').srcObject = stream
-  }catch(e){
-    alert('Gagal buka kamera: ' + e.message)
-  }
-}
-
-function gantiKamera(){
-  facingMode = facingMode === 'user'? 'environment' : 'user'
-  bukaKamera()
-}
-
-// AMBIL FOTO
-function ambilFoto(){
-  const video = document.getElementById('video')
-  const canvas = document.createElement('canvas')
-  canvas.width = video.videoWidth
-  canvas.height = video.videoHeight
-  canvas.getContext('2d').drawImage(video,0,0)
-  return canvas.toDataURL('image/jpeg',0.8)
-}
-
-// ABSEN
-async function absen(status){
-  const nama = document.getElementById('nama').value.trim()
-  const statusEl = document.getElementById('status')
-  const btn = document.getElementById('btn' + status.charAt(0).toUpperCase() + status.slice(1))
-
-  if(!nama){
-    alert('Isi nama dulu ka')
-    return
-  }
-
-  btn.disabled = true
-  statusEl.textContent = 'Upload foto...'
-
-  try{
-    // 1. Ambil foto
-    const fotoBase64 = ambilFoto()
-    const blob = await fetch(fotoBase64).then(r=>r.blob())
-    const fileName = `${nama}_${status}_${Date.now()}.jpg`
-
-    // 2. Upload ke Storage
-    const {error: uploadError} = await supabase.storage
-     .from('ABSENSI-FOTO')
-     .upload(fileName, blob)
-
-    if(uploadError) throw uploadError
-
-    // 3. Ambil URL foto
-    const {data: urlData} = supabase.storage
-     .from('ABSENSI-FOTO')
-     .getPublicUrl(fileName)
-
-    // 4. Simpan ke tabel absensi
-    const {error: dbError} = await supabase
-     .from('absensi')
-     .insert([{
-        nama: nama,
-        waktu_absen: new Date().toISOString(),
-        foto_url: urlData.publicUrl,
-        status: status
-      }])
-
-    if(dbError) throw dbError
-
-    statusEl.textContent = '✅ Absen ' + status + ' berhasil!'
-    loadRiwayat()
-
-  }catch(e){
-    statusEl.textContent = '❌ Gagal: ' + e.message
-    alert('Error: ' + e.message)
-  }
-
-  btn.disabled = false
-}
-
-// LOAD RIWAYAT FILTER NAMA
-async function loadRiwayat(){
-  const nama = document.getElementById('nama').value.trim()
-  const div = document.getElementById('riwayat')
-
-  if(!nama){
-    div.innerHTML = 'Ketik nama dulu buat lihat riwayat'
-    return
-  }
-
-  const {data, error} = await supabase
-   .from('absensi')
-   .select('*')
-   .eq('nama', nama)
-   .order('waktu_absen', {ascending:false})
-   .limit(20)
-
-  if(error){
-    div.innerHTML = 'Error load riwayat'
-    return
-  }
-
-  if(data.length === 0){
-    div.innerHTML = 'Belum ada riwayat'
-    return
-  }
-
-  div.innerHTML = data.map(d=>`
-    <div class="item">
-      <img src="${d.foto_url}" class="thumb">
-      <b>${d.status.toUpperCase()}</b><br>
-      ${new Date(d.waktu_absen).toLocaleString('id-ID')}
-    </div>
-  `).join('')
-}
-
-// Auto refresh riwayat pas nama diketik
-document.getElementById('nama').addEventListener('input', loadRiwayat)
 </script>
 </body>
 </html>
