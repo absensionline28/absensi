@@ -25,20 +25,16 @@ input{width:100%;padding:14px;margin-top:12px;border:none;border-radius:14px;fon
 .hidden{display:none}
 video{width:100%;border-radius:14px;margin-top:12px;border:3px solid #fff}
 #pesan{color:#fff;text-align:center;margin-top:12px;font-weight:600;min-height:24px;font-size:14px}
-
-/* INI KUNCINYA BIAR TABEL GA PECAH */
 .table-wrap{overflow-x:auto;margin-top:15px;border-radius:16px}
 table{border-collapse:separate;border-spacing:0;width:100%;color:#fff;font-size:12px;min-width:380px}
 th,td{padding:10px 6px;text-align:center;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,0.2)}
 th{background:rgba(255,255,255,0.25);font-weight:600;font-size:12px;position:sticky;top:0}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:rgba(255,255,255,0.1)}
-
 .foto-box{width:45px;height:45px;margin:auto}
 .foto-box img{width:42px;height:42px;object-fit:cover;border-radius:50%;border:2px solid #fff;cursor:pointer;transition:transform 0.2s}
 .foto-box img:active{transform:scale(3);position:relative;z-index:999;box-shadow:0 0 25px rgba(0,0,0,0.6)}
 .note{color:rgba(255,255,255,0.85);font-size:11px;text-align:center;margin-top:8px}
-
 .card-riwayat{background:rgba(255,255,255,0.15);border-radius:18px;padding:15px}
 </style>
 </head>
@@ -104,6 +100,7 @@ tr:hover td{background:rgba(255,255,255,0.1)}
 import { createClient } from 'supabase'
 import * as XLSX from 'xlsx'
 
+// WAJIB GANTI 2 BARIS INI PAKE PUNYA KAMU
 const SUPABASE_URL = 'https://gdvrrwalbchwmgaucttl.supabase.co'
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkdnJyd2FsYmNod21nYXVjdHRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MzM5MDQsImV4cCI6MjA5NjUwOTkwNH0._lrG5HkGdStq2c3Zbgxbwg8BJ6wlE3TleI69jjvzxjU'
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
@@ -153,7 +150,10 @@ async function uploadFoto(blob){
   try{
     const namaFolder = namaAktif.replace(/\s/g,'_')
     const namaFile = `${namaFolder}/${modeAbsen}_${Date.now()}.jpg`
-    const {error} = await supabase.storage.from('absensi-foto').upload(namaFile, blob)
+    const {error} = await supabase.storage.from('absensi-foto').upload(namaFile, blob, {
+      contentType: 'image/jpeg',
+      upsert: true
+    })
     if(error) throw error
     const {data} = supabase.storage.from('absensi-foto').getPublicUrl(namaFile)
     return data.publicUrl
@@ -226,10 +226,10 @@ document.getElementById('btnRiwayat').onclick = async () => {
   tbody.innerHTML = '<tr><td colspan=5 style="padding:15px">Loading...</td></tr>'
 
   const {data, error} = await supabase.from('absensi')
-  .select('nama,waktu_masuk,waktu_pulang,foto_masuk,foto_pulang')
-  .eq('nama', namaAktif)
-  .order('id', {ascending:false})
-  .limit(100)
+ .select('nama,waktu_masuk,waktu_pulang,foto_masuk,foto_pulang')
+ .eq('nama', namaAktif)
+ .order('id', {ascending:false})
+ .limit(100)
 
   if(error){tbody.innerHTML = `<tr><td colspan=5>Error: ${error.message}</td></tr>`;return}
   if(!data.length){tbody.innerHTML = `<tr><td colspan=5 style="padding:15px">Belum ada data</td></tr>`;return}
