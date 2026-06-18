@@ -1,60 +1,125 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Absen</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>Absensi Online Kantor</title>
 <style>
-body{background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:30px}
-input,button{width:90%;padding:15px;margin:10px;font-size:18px;border-radius:10px;border:0}
-input{background:#333;color:#fff}
-button{background:#0af;color:#000;font-weight:bold}
-video{width:90%;border-radius:10px;background:#000}
+  body{font-family:Arial,sans-serif;background:#f5f7fa;margin:0;padding:20px;display:flex;justify-content:center}
+  .box{background:#fff;padding:25px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);max-width:400px;width:100%}
+  h2{text-align:center;color:#333;margin-bottom:20px}
+  input,button{width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:8px;font-size:16px}
+  button{background:#28a745;color:#fff;border:none;cursor:pointer;font-weight:bold}
+  button:disabled{background:#aaa;cursor:not-allowed}
+  video{width:100%;border-radius:8px;margin:10px 0;background:#000}
+  #status{margin-top:15px;padding:10px;border-radius:8px;text-align:center;font-size:14px}
+  .ok{background:#d4edda;color:#155724}
+  .err{background:#f8d7da;color:#721c24}
+  .info{background:#d1ecf1;color:#0c5460}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-<h2>ABSENSI</h2>
-<input id="nama" placeholder="TULIS NAMA KAMU">
-<br>
-<video id="cam" autoplay playsinline></video>
-<br>
-<button onclick="absen('masuk')">ABSEN MASUK</button>
-<button onclick="absen('pulang')">ABSEN PULANG</button>
-<p id="pesan"></p>
+<div class="box">
+  <h2>Absensi Kantor</h2>
+  
+  <input id="nama" placeholder="Nama Lengkap" required>
+  <input id="id" placeholder="ID Karyawan" required>
+  
+  <video id="cam" autoplay playsinline></video>
+  <canvas id="canvas" style="display:none"></canvas>
+  
+  <button id="masuk" onclick="absen('masuk')">ABSEN MASUK</button>
+  <button id="pulang" onclick="absen('pulang')" style="background:#dc3545">ABSEN PULANG</button>
+  
+  <div id="status" class="info">Menyalakan kamera...</div>
+</div>
 
 <script>
-// GANTI 2 BARIS INI AJA PAKE PUNYAMU
-const URL = 'https://gdvrrwalbchwmgaucttl.supabase.co'
-const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkdnJyd2FsYmNod21nYXVjdHRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MzM5MDQsImV4cCI6MjA5NjUwOTkwNH0._lrG5HkGdStq2c3Zbgxbwg8BJ6wlE3TleI69jjvzxjU'
-const db = supabase.createClient(URL, KEY)
+// GANTI DENGAN URL + KEY KAMU DARI SUPABASE
+const SUPABASE_URL = 'https://gdvrrwalbchwmgaucttl.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkdnJyd2FsYmNod21nYXVjdHRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MzM5MDQsImV4cCI6MjA5NjUwOTkwNH0._lrG5HkGdStq2c3Zbgxbwg8BJ6wlE3TleI69jjvzxjU';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-navigator.mediaDevices.getUserMedia({video:true}).then(s=>{
-  document.getElementById('cam').srcObject = s
+const video = document.getElementById('cam');
+const canvas = document.getElementById('canvas');
+const status = document.getElementById('status');
+const btnMasuk = document.getElementById('masuk');
+const btnPulang = document.getElementById('pulang');
+
+// Nyalain kamera
+navigator.mediaDevices.getUserMedia({video:true})
+.then(stream => {
+  video.srcObject = stream;
+  status.textContent = 'Kamera siap. Silakan absen.';
+  status.className = 'ok';
 })
+.catch(err => {
+  status.textContent = 'ERROR KAMERA: ' + err.message + '. Cek izin kamera di browser!';
+  status.className = 'err';
+  console.error(err);
+});
 
 async function absen(jenis){
-  const nama = document.getElementById('nama').value
-  const pesan = document.getElementById('pesan')
+  const nama = document.getElementById('nama').value.trim();
+  const id = document.getElementById('id').value.trim();
   
-  if(!nama){alert('ISI NAMA DULU');return}
+  if(!nama || !id){
+    status.textContent = 'Nama dan ID wajib diisi!';
+    status.className = 'err';
+    return;
+  }
   
-  pesan.textContent = 'Ngirim...'
+  btnMasuk.disabled = true;
+  btnPulang.disabled = true;
+  status.textContent = 'Ngirim data + foto...';
+  status.className = 'info';
   
-  const video = document.getElementById('cam')
-  const c = document.createElement('canvas')
-  c.width = video.videoWidth
-  c.height = video.videoHeight
-  c.getContext('2d').drawImage(video,0,0)
-  const blob = await fetch(c.toDataURL()).then(r=>r.blob())
-  
-  const file = nama + '_' + Date.now() + '.jpg'
-  await db.storage.from('ABSENSI-FOTO').upload(file, blob)
-  const url = db.storage.from('ABSENSI-FOTO').getPublicUrl(file).data.publicUrl
-  
-  await db.from('absensi').insert({nama:nama, status:jenis, foto_url:url, waktu_absen:new Date()})
-  
-  pesan.textContent = '✅ BERHASIL ABSEN ' + jenis.toUpperCase()
+  try {
+    // Ambil foto
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+    const fileName = `${id}_${jenis}_${Date.now()}.jpg`;
+    
+    // Upload ke Supabase Storage
+    status.textContent = 'Upload foto ke Supabase...';
+    const {data:uploadData, error:uploadError} = await db.storage
+      .from('ABSENSI-FOTO')
+      .upload(fileName, blob);
+    
+    if(uploadError) throw new Error('Upload gagal: ' + uploadError.message);
+    
+    const {data:urlData} = db.storage.from('ABSENSI-FOTO').getPublicUrl(fileName);
+    const fotoUrl = urlData.publicUrl;
+    
+    // Simpan ke tabel
+    status.textContent = 'Simpan ke database...';
+    const {error:dbError} = await db.from('absensi').insert({
+      nama: nama,
+      id_karyawan: id,
+      jenis: jenis,
+      waktu: new Date().toISOString(),
+      foto_url: fotoUrl
+    });
+    
+    if(dbError) throw new Error('DB gagal: ' + dbError.message);
+    
+    status.textContent = '✅ Absen ' + jenis.toUpperCase() + ' berhasil!';
+    status.className = 'ok';
+    document.getElementById('nama').value = '';
+    document.getElementById('id').value = '';
+    
+  } catch(err) {
+    status.textContent = '❌ ERROR: ' + err.message;
+    status.className = 'err';
+    console.error('Detail error:', err);
+  } finally {
+    btnMasuk.disabled = false;
+    btnPulang.disabled = false;
+  }
 }
 </script>
 </body>
