@@ -49,8 +49,8 @@ async function absen(jenis){
   const blob = await fetch(c.toDataURL()).then(r=>r.blob())
   
   const file = nama + '_' + Date.now() + '.jpg'
-  await db.storage.from('absensi-foto').upload(file, blob)
-  const url = db.storage.from('absensi-foto').getPublicUrl(file).data.publicUrl
+  await db.storage.from('ABSENSI-FOTO').upload(file, blob)
+  const url = db.storage.from('ABSENSI-FOTO').getPublicUrl(file).data.publicUrl
   
   await db.from('absensi').insert({nama:nama, status:jenis, foto_url:url, waktu_absen:new Date()})
   
