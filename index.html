@@ -1,125 +1,395 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Absensi Online Kantor</title>
-<style>
-  body{font-family:Arial,sans-serif;background:#f5f7fa;margin:0;padding:20px;display:flex;justify-content:center}
-  .box{background:#fff;padding:25px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);max-width:400px;width:100%}
-  h2{text-align:center;color:#333;margin-bottom:20px}
-  input,button{width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:8px;font-size:16px}
-  button{background:#28a745;color:#fff;border:none;cursor:pointer;font-weight:bold}
-  button:disabled{background:#aaa;cursor:not-allowed}
-  video{width:100%;border-radius:8px;margin:10px 0;background:#000}
-  #status{margin-top:15px;padding:10px;border-radius:8px;text-align:center;font-size:14px}
-  .ok{background:#d4edda;color:#155724}
-  .err{background:#f8d7da;color:#721c24}
-  .info{background:#d1ecf1;color:#0c5460}
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Absensi Modern</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg1: #2563eb; --bg2: #1e40af; --card: rgba(255,255,255,0.2); --danger: #ef4444; --success: #10b981;
+}
+* { box-sizing: border-box; }
+body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; max-width: 420px; margin: auto; background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 100%); min-height: 100vh; color: #fff; }
+.card { background: var(--card); backdrop-filter: blur(20px); border-radius: 24px; padding: 24px; margin-bottom: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
+input, textarea, select { width: 100%; padding: 14px; margin: 8px 0; border-radius: 14px; border: none; font-size: 16px; color: #333; }
+label { font-size: 14px; font-weight: 600; display: block; margin-top: 10px; color: #fff; }
+button { width: 100%; padding: 16px; margin: 8px 0; border: none; border-radius: 14px; background: #3b82f6; color: white; font-weight: 700; font-size: 16px; cursor: pointer; }
+button.cam { background: #f59e0b; font-size: 14px; padding: 12px; }
+button.kirim { background: var(--success); }
+button.logout { background: rgba(255,255,255,0.2); }
+button.export { background: #2563eb; }
+img { max-width: 100%; margin: 8px 0; border-radius: 12px; }
+.menu { display: flex; gap: 8px; margin-bottom: 16px; }
+.menu button { flex: 1; font-size: 12px; padding: 12px 8px; }
+.cam-group { display: flex; gap: 8px; }
+.cam-group button { flex: 1; }
+table { width: 100%; background: #fff; border-radius: 12px; font-size: 12px; color: #333; border-collapse: collapse; }
+th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; white-space: nowrap; }
+th { background: #2563eb; color: white; font-weight: 700; }
+h2, h3 { text-align: center; color: #fff; margin: 0 0 20px 0; }
+.text-red { color: var(--danger)!important; font-weight: 700; }
+.text-green { color: var(--success)!important; font-weight: 700; }
+.text-muted { color: #94a3b8; font-style: italic; }
+.overflow-x { overflow-x: auto; }
+</style>
 </head>
 <body>
-<div class="box">
-  <h2>Absensi Kantor</h2>
-  
-  <input id="nama" placeholder="Nama Lengkap" required>
-  <input id="id" placeholder="ID Karyawan" required>
-  
-  <video id="cam" autoplay playsinline></video>
-  <canvas id="canvas" style="display:none"></canvas>
-  
-  <button id="masuk" onclick="absen('masuk')">ABSEN MASUK</button>
-  <button id="pulang" onclick="absen('pulang')" style="background:#dc3545">ABSEN PULANG</button>
-  
-  <div id="status" class="info">Menyalakan kamera...</div>
+
+<div id="loginPage">
+  <div class="card">
+    <h2>🔐 Login Absensi</h2>
+    <input id="emailLogin" placeholder="Masukkan Email">
+    <input id="passLogin" type="password" placeholder="Masukkan Password">
+    <button type="button" onclick="login()">Masuk 🚀</button>
+    <p id="loginStatus" style="color:#ff6b6b;text-align:center;font-weight:700"></p>
+  </div>
+</div>
+
+<div id="pageKaryawan" style="display:none">
+  <div class="card">
+    <div class="menu">
+      <button type="button" onclick="showKry('kry1')">📍 Masuk</button>
+      <button type="button" onclick="showKry('kry2')">🏠 Pulang</button>
+      <button type="button" onclick="showKry('kry3')">📝 Sanggah</button>
+      <button type="button" class="logout" onclick="logout()">Keluar</button>
+    </div>
+  </div>
+
+  <div id="kry1" class="card">
+    <h3>📍 Absen Masuk</h3>
+    <input id="user1" readonly>
+    <input id="id1" placeholder="ID Manual">
+    <input id="nama1" placeholder="Nama Lengkap">
+    <input id="idKar1" placeholder="ID Karyawan">
+    <label>Tanggal</label>
+    <input id="tanggalMasuk" type="date">
+    <label>Jam Masuk <span id="warningMasuk"></span></label>
+    <input id="jamMasuk" type="time" onchange="cekJamMasuk()">
+    <label>Foto Selfie</label>
+    <div class="cam-group">
+      <button type="button" class="cam" onclick="ambilFoto('foto1', 'user')">📱 Depan</button>
+      <button type="button" class="cam" onclick="ambilFoto('foto1', 'environment')">📷 Belakang</button>
+    </div>
+    <input type="file" id="foto1" accept="image/*" style="display:none">
+    <img id="preview1">
+    <button type="button" class="kirim" onclick="kirimMasuk()">🚀 Kirim Absen Masuk</button>
+    <button type="button" onclick="showKry('kry2')">Next →</button>
+    <p id="status1"></p>
+  </div>
+
+  <div id="kry2" class="card" style="display:none">
+    <h3>🏠 Absen Pulang</h3>
+    <input id="user2" readonly>
+    <input id="id2" placeholder="ID Manual">
+    <input id="nama2" placeholder="Nama Lengkap">
+    <input id="idKar2" placeholder="ID Karyawan">
+    <label>Tanggal</label>
+    <input id="tanggalPulang" type="date">
+    <label>Jam Pulang <span id="warningPulang"></span></label>
+    <input id="jamPulang" type="time" onchange="cekJamPulang()">
+    <label>Foto Selfie</label>
+    <div class="cam-group">
+      <button type="button" class="cam" onclick="ambilFoto('foto2', 'user')">📱 Depan</button>
+      <button type="button" class="cam" onclick="ambilFoto('foto2', 'environment')">📷 Belakang</button>
+    </div>
+    <input type="file" id="foto2" accept="image/*" style="display:none">
+    <img id="preview2">
+    <button type="button" class="kirim" onclick="kirimPulang()">🚀 Kirim Absen Pulang</button>
+    <button type="button" onclick="showKry('kry3')">Next →</button>
+    <p id="status2"></p>
+  </div>
+
+  <div id="kry3" class="card" style="display:none">
+    <h3>📝 Sanggahan</h3>
+    <input id="tanggal3" type="date">
+    <input id="nama3" placeholder="Nama Lengkap">
+    <input id="id3" placeholder="ID Karyawan">
+    <textarea id="ket3" placeholder="Keterangan" rows="3"></textarea>
+    <label>Upload Bukti</label>
+    <input type="file" id="foto3" accept="image/*">
+    <img id="preview3">
+    <select id="type3"><option value="">Pilih Type</option><option>Lupa Absen</option><option>HP Error</option><option>Lainnya</option></select>
+    <select id="aksi3"><option value="">Pilih Aksi</option><option>Ajukan</option><option>Batal</option></select>
+    <button type="button" class="kirim" onclick="kirimSanggahan()">🚀 Kirim Sanggahan</button>
+    <p id="status3"></p>
+  </div>
+</div>
+
+<div id="pageAdmin" style="display:none">
+  <div class="card">
+    <h2>📊 Dashboard Admin</h2>
+    <button type="button" class="logout" onclick="logout()">Keluar</button>
+    <div class="menu">
+      <button type="button" onclick="showAdm('adm1')">📍 Masuk</button>
+      <button type="button" onclick="showAdm('adm2')">🏠 Pulang</button>
+      <button type="button" onclick="showAdm('adm3')">📝 Sanggah</button>
+      <button type="button" onclick="loadSemua()">🔄 Refresh</button>
+    </div>
+  </div>
+
+  <div id="adm1" class="card">
+    <h3>Data Absen Masuk</h3>
+    <button type="button" class="export" onclick="exportExcel('masuk')">📊 Export Excel</button>
+    <div class="overflow-x"><table><thead><tr><th>No</th><th>Nama</th><th>ID</th><th>Tanggal</th><th>Jam</th><th>Status</th><th>Foto</th></tr></thead><tbody id="tabelMasuk"></tbody></table></div>
+  </div>
+
+  <div id="adm2" class="card" style="display:none">
+    <h3>Data Absen Pulang</h3>
+    <button type="button" class="export" onclick="exportExcel('pulang')">📊 Export Excel</button>
+    <div class="overflow-x"><table><thead><tr><th>No</th><th>Nama</th><th>ID</th><th>Tanggal</th><th>Jam</th><th>Status</th><th>Foto</th></tr></thead><tbody id="tabelPulang"></tbody></table></div>
+  </div>
+
+  <div id="adm3" class="card" style="display:none">
+    <h3>Data Sanggahan</h3>
+    <div class="overflow-x"><table><thead><tr><th>No</th><th>Tgl</th><th>Nama</th><th>ID</th><th>Ket</th><th>Type</th><th>Foto</th></tr></thead><tbody id="tabelSanggah"></tbody></table></div>
+  </div>
 </div>
 
 <script>
-// GANTI DENGAN URL + KEY KAMU DARI SUPABASE
-const SUPABASE_URL = 'https://gdvrrwalbchwmgaucttl.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkdnJyd2FsYmNod21nYXVjdHRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MzM5MDQsImV4cCI6MjA5NjUwOTkwNH0._lrG5HkGdStq2c3Zbgxbwg8BJ6wlE3TleI69jjvzxjU';
+const SUPABASE_URL = 'https://fkffpkyjxjtqdjcwechg.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrZmZwa3lqeGp0cWRqY3dlY2hnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5ODc0OTEsImV4cCI6MjA5NjU2MzQ5MX0.3ewhHcp3m15pGSxVIvBzULgs36cKK2cD9VLHpLz_Igo';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let userEmail = '';
+let dataMasukGlobal = [];
+let dataPulangGlobal = [];
 
-const video = document.getElementById('cam');
-const canvas = document.getElementById('canvas');
-const status = document.getElementById('status');
-const btnMasuk = document.getElementById('masuk');
-const btnPulang = document.getElementById('pulang');
+function formatTanggal(tgl){
+  if(!tgl || tgl === 'null') return '<span class="text-muted">-</span>';
+  const date = new Date(tgl);
+  if(isNaN(date)) return tgl;
+  const opsi = { day: '2-digit', month: 'short', year: 'numeric' };
+  return date.toLocaleDateString('id-ID', opsi).replace('.', '');
+}
 
-// Nyalain kamera
-navigator.mediaDevices.getUserMedia({video:true})
-.then(stream => {
-  video.srcObject = stream;
-  status.textContent = 'Kamera siap. Silakan absen.';
-  status.className = 'ok';
-})
-.catch(err => {
-  status.textContent = 'ERROR KAMERA: ' + err.message + '. Cek izin kamera di browser!';
-  status.className = 'err';
-  console.error(err);
-});
+function setWaktu(){
+  const now = new Date();
+  const tgl = now.toISOString().split('T')[0];
+  const jam = now.toTimeString().split(' ')[0].slice(0,5);
+  document.getElementById('tanggalMasuk').value = tgl;
+  document.getElementById('jamMasuk').value = jam;
+  document.getElementById('tanggalPulang').value = tgl;
+  document.getElementById('jamPulang').value = jam;
+  document.getElementById('tanggal3').value = tgl;
+  cekJamMasuk(); cekJamPulang();
+}
 
-async function absen(jenis){
-  const nama = document.getElementById('nama').value.trim();
-  const id = document.getElementById('id').value.trim();
-  
-  if(!nama || !id){
-    status.textContent = 'Nama dan ID wajib diisi!';
-    status.className = 'err';
+function cekJamMasuk(){
+  const jam = document.getElementById('jamMasuk').value;
+  const warning = document.getElementById('warningMasuk');
+  if(jam && jam > '07:00'){
+    warning.textContent = '(Terlambat!)'; warning.className = 'text-red';
+  } else {
+    warning.textContent = '(Tepat Waktu)'; warning.className = 'text-green';
+  }
+}
+
+function cekJamPulang(){
+  const jam = document.getElementById('jamPulang').value;
+  const warning = document.getElementById('warningPulang');
+  if(jam && jam < '21:00'){
+    warning.textContent = '(Pulang Cepat!)'; warning.className = 'text-red';
+  } else {
+    warning.textContent = '(Normal)'; warning.className = 'text-green';
+  }
+}
+
+function login(){
+  const email = document.getElementById('emailLogin').value.trim();
+  const pass = document.getElementById('passLogin').value.trim();
+  if(pass!== 'Admin123'){ document.getElementById('loginStatus').textContent = '❌ Password salah!'; return; }
+  if(email === 'karyawan@kantor.com'){
+    userEmail = email;
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('pageKaryawan').style.display = 'block';
+    document.getElementById('user1').value = email;
+    document.getElementById('user2').value = email;
+    setWaktu();
+  }
+  else if(email === 'dashboard@kantor.com'){
+    userEmail = email;
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('pageAdmin').style.display = 'block';
+    showAdm('adm1');
+    loadSemua();
+  }
+  else { document.getElementById('loginStatus').textContent = '❌ Email salah!'; }
+}
+
+function logout(){
+  document.getElementById('pageKaryawan').style.display = 'none';
+  document.getElementById('pageAdmin').style.display = 'none';
+  document.getElementById('loginPage').style.display = 'block';
+  document.getElementById('emailLogin').value = '';
+  document.getElementById('passLogin').value = '';
+  userEmail = '';
+}
+
+function showKry(id){
+  document.getElementById('kry1').style.display = 'none';
+  document.getElementById('kry2').style.display = 'none';
+  document.getElementById('kry3').style.display = 'none';
+  document.getElementById(id).style.display = 'block';
+  setWaktu();
+}
+
+function showAdm(id){
+  document.getElementById('adm1').style.display = 'none';
+  document.getElementById('adm2').style.display = 'none';
+  document.getElementById('adm3').style.display = 'none';
+  document.getElementById(id).style.display = 'block';
+}
+
+function ambilFoto(inputId, facingMode){
+  const input = document.getElementById(inputId);
+  input.setAttribute('capture', facingMode);
+  input.click();
+}
+
+document.getElementById('foto1').onchange = e => { if(e.target.files[0]) document.getElementById('preview1').src = URL.createObjectURL(e.target.files[0]); };
+document.getElementById('foto2').onchange = e => { if(e.target.files[0]) document.getElementById('preview2').src = URL.createObjectURL(e.target.files[0]); };
+document.getElementById('foto3').onchange = e => { if(e.target.files[0]) document.getElementById('preview3').src = URL.createObjectURL(e.target.files[0]); };
+
+async function uploadFoto(file, folder){
+  if(!file) return '';
+  const namaFile = folder + '/' + Date.now() + '-' + file.name;
+  const { data, error } = await db.storage.from('foto-absen').upload(namaFile, file);
+  if(error){ alert('Upload gagal: ' + error.message); return ''; }
+  return db.storage.from('foto-absen').getPublicUrl(namaFile).data.publicUrl;
+}
+
+async function kirimMasuk(){
+  const status = document.getElementById('status1');
+  status.textContent = '⏳ Mengirim...';
+  const file = document.getElementById('foto1').files[0];
+  const fotoUrl = await uploadFoto(file, 'masuk');
+  const { error } = await db.from('absen_masuk').insert([{
+    username: userEmail,
+    id_manual: document.getElementById('id1').value,
+    nama: document.getElementById('nama1').value,
+    id_karyawan: document.getElementById('idKar1').value,
+    foto_masuk: fotoUrl,
+    tanggal_masuk: document.getElementById('tanggalMasuk').value,
+    jam_masuk: document.getElementById('jamMasuk').value + ':00'
+  }]);
+  status.textContent = error? '❌ Gagal: ' + error.message : '✅ Terkirim!';
+}
+
+async function kirimPulang(){
+  const status = document.getElementById('status2');
+  status.textContent = '⏳ Mengirim...';
+  const file = document.getElementById('foto2').files[0];
+  const fotoUrl = await uploadFoto(file, 'pulang');
+  const { error } = await db.from('absen_pulang').insert([{
+    username: userEmail,
+    id_manual: document.getElementById('id2').value,
+    nama: document.getElementById('nama2').value,
+    id_karyawan: document.getElementById('idKar2').value,
+    foto_pulang: fotoUrl,
+    tanggal_pulang: document.getElementById('tanggalPulang').value,
+    jam_pulang: document.getElementById('jamPulang').value + ':00'
+  }]);
+  status.textContent = error? '❌ Gagal: ' + error.message : '✅ Terkirim!';
+}
+
+async function kirimSanggahan(){
+  const status = document.getElementById('status3');
+  status.textContent = '⏳ Mengirim...';
+  const file = document.getElementById('foto3').files[0];
+  const fotoUrl = await uploadFoto(file, 'sanggahan');
+  const { error } = await db.from('sanggahan').insert([{
+    tanggal: document.getElementById('tanggal3').value,
+    nama: document.getElementById('nama3').value,
+    id_karyawan: document.getElementById('id3').value,
+    keterangan: document.getElementById('ket3').value,
+    foto: fotoUrl,
+    type: document.getElementById('type3').value,
+    aksi: document.getElementById('aksi3').value
+  }]);
+  status.textContent = error? '❌ Gagal: ' + error.message : '✅ Terkirim!';
+}
+
+async function loadMasuk(){
+  const { data, error } = await db.from('absen_masuk').select('*').order('tanggal_masuk', {ascending: false}).limit(200);
+  if(error){ alert('Error load masuk: ' + error.message); return; }
+  dataMasukGlobal = data || [];
+  renderMasuk();
+}
+
+function renderMasuk(){
+  if(dataMasukGlobal.length === 0){
+    document.getElementById('tabelMasuk').innerHTML = `<tr><td colspan="7" style="text-align:center">Data tidak ditemukan</td></tr>`;
     return;
   }
-  
-  btnMasuk.disabled = true;
-  btnPulang.disabled = true;
-  status.textContent = 'Ngirim data + foto...';
-  status.className = 'info';
-  
-  try {
-    // Ambil foto
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d').drawImage(video, 0, 0);
-    
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
-    const fileName = `${id}_${jenis}_${Date.now()}.jpg`;
-    
-    // Upload ke Supabase Storage
-    status.textContent = 'Upload foto ke Supabase...';
-    const {data:uploadData, error:uploadError} = await db.storage
-      .from('ABSENSI-FOTO')
-      .upload(fileName, blob);
-    
-    if(uploadError) throw new Error('Upload gagal: ' + uploadError.message);
-    
-    const {data:urlData} = db.storage.from('ABSENSI-FOTO').getPublicUrl(fileName);
-    const fotoUrl = urlData.publicUrl;
-    
-    // Simpan ke tabel
-    status.textContent = 'Simpan ke database...';
-    const {error:dbError} = await db.from('absensi').insert({
-      nama: nama,
-      id_karyawan: id,
-      jenis: jenis,
-      waktu: new Date().toISOString(),
-      foto_url: fotoUrl
-    });
-    
-    if(dbError) throw new Error('DB gagal: ' + dbError.message);
-    
-    status.textContent = '✅ Absen ' + jenis.toUpperCase() + ' berhasil!';
-    status.className = 'ok';
-    document.getElementById('nama').value = '';
-    document.getElementById('id').value = '';
-    
-  } catch(err) {
-    status.textContent = '❌ ERROR: ' + err.message;
-    status.className = 'err';
-    console.error('Detail error:', err);
-  } finally {
-    btnMasuk.disabled = false;
-    btnPulang.disabled = false;
+  document.getElementById('tabelMasuk').innerHTML = dataMasukGlobal.map((r,i) => {
+    const jam = r.jam_masuk? r.jam_masuk.slice(0,5) : '-';
+    const statusJam = jam > '07:00'? '<span class="text-red">Terlambat</span>' : '<span class="text-green">Tepat</span>';
+    return `<tr><td>${i+1}</td><td>${r.nama}</td><td>${r.id_karyawan}</td><td>${formatTanggal(r.tanggal_masuk)}</td><td>${jam}</td><td>${statusJam}</td><td>${r.foto_masuk? `<img src="${r.foto_masuk}" style="width:50px" onclick="window.open(this.src)">` : '-'}</td></tr>`;
+  }).join('');
+}
+
+async function loadPulang(){
+  const { data, error } = await db.from('absen_pulang').select('*').order('tanggal_pulang', {ascending: false}).limit(200);
+  if(error){ alert('Error load pulang: ' + error.message); return; }
+  dataPulangGlobal = data || [];
+  renderPulang();
+}
+
+function renderPulang(){
+  if(dataPulangGlobal.length === 0){
+    document.getElementById('tabelPulang').innerHTML = `<tr><td colspan="7" style="text-align:center">Data tidak ditemukan</td></tr>`;
+    return;
   }
+  document.getElementById('tabelPulang').innerHTML = dataPulangGlobal.map((r,i) => {
+    const jam = r.jam_pulang? r.jam_pulang.slice(0,5) : '-';
+    const statusJam = jam < '21:00'? '<span class="text-red">Pulang Cepat</span>' : '<span class="text-green">Normal</span>';
+    return `<tr><td>${i+1}</td><td>${r.nama}</td><td>${r.id_karyawan}</td><td>${formatTanggal(r.tanggal_pulang)}</td><td>${jam}</td><td>${statusJam}</td><td>${r.foto_pulang? `<img src="${r.foto_pulang}" style="width:50px" onclick="window.open(this.src)">` : '-'}</td></tr>`;
+  }).join('');
+}
+
+async function loadSanggah(){
+  const { data } = await db.from('sanggahan').select('*').order('tanggal', {ascending: false}).limit(200);
+  document.getElementById('tabelSanggah').innerHTML = data.map((r,i) => `<tr><td>${i+1}</td><td>${formatTanggal(r.tanggal)}</td><td>${r.nama}</td><td>${r.id_karyawan}</td><td>${r.keterangan}</td><td>${r.type}</td><td>${r.foto? `<img src="${r.foto}" style="width:50px" onclick="window.open(this.src)">` : '-'}</td></tr>`).join('');
+}
+
+function loadSemua(){ loadMasuk(); loadPulang(); loadSanggah(); }
+setInterval(loadSemua, 15000);
+
+// EXPORT PAKAI PROMPT FILTER
+function exportExcel(type){
+  const data = type === 'masuk'? dataMasukGlobal : dataPulangGlobal;
+
+  if(data.length === 0){
+    alert('⚠️ Data kosong! Belum ada absen ' + type);
+    return;
+  }
+
+  // Munculin prompt buat filter nama
+  const namaFilter = prompt('Filter Nama Karyawan\nKosongkan untuk export semua data:\n', '');
+  const filter = namaFilter? namaFilter.toLowerCase() : '';
+  const filtered = filter? data.filter(r => r.nama.toLowerCase().includes(filter)) : data;
+
+  if(filtered.length === 0){
+    alert('⚠️ Data tidak ditemukan untuk nama: ' + namaFilter);
+    return;
+  }
+
+  const wsData = [['No','Nama','ID Karyawan','Tanggal','Jam', type === 'masuk'? 'Status Masuk' : 'Status Pulang']];
+  filtered.forEach((r,i) => {
+    const jam = type === 'masuk'? (r.jam_masuk? r.jam_masuk.slice(0,5) : '-') : (r.jam_pulang? r.jam_pulang.slice(0,5) : '-');
+    const tgl = type === 'masuk'? formatTanggal(r.tanggal_masuk).replace(/<[^>]*>/g,'') : formatTanggal(r.tanggal_pulang).replace(/<[^>]*>/g,'');
+    const status = type === 'masuk'? (jam > '07:00'? 'Terlambat' : 'Tepat Waktu') : (jam < '21:00'? 'Pulang Cepat' : 'Normal');
+    wsData.push([i+1, r.nama, r.id_karyawan, tgl, jam, status]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [{wch: 5}, {wch: 25}, {wch: 15}, {wch: 15}, {wch: 10}, {wch: 15}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, type === 'masuk'? 'Absen Masuk' : 'Absen Pulang');
+
+  const namaFile = filter? `Absensi_${type}_filter-${filter}_${new Date().toISOString().split('T')[0]}.xlsx` : `Absensi_${type}_all_${new Date().toISOString().split('T')[0]}.xlsx`;
+  XLSX.writeFile(wb, namaFile);
+  alert(`✅ Export berhasil! ${filtered.length} data`);
 }
 </script>
 </body>
