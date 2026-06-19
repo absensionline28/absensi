@@ -3,7 +3,7 @@
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Absensi Modern</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root {
@@ -11,27 +11,30 @@
 }
 * { box-sizing: border-box; }
 body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; max-width: 420px; margin: auto; background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 100%); min-height: 100vh; color: #fff; }
-.card { background: var(--card); backdrop-filter: blur(20px); border-radius: 24px; padding: 24px; margin-bottom: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
+.card { background: var(--card); backdrop-filter: blur(20px); border-radius: 20px; padding: 16px; margin-bottom: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
 input, textarea, select { width: 100%; padding: 14px; margin: 8px 0; border-radius: 14px; border: none; font-size: 16px; color: #333; }
 label { font-size: 14px; font-weight: 600; display: block; margin-top: 10px; color: #fff; }
 button { width: 100%; padding: 16px; margin: 8px 0; border: none; border-radius: 14px; background: #3b82f6; color: white; font-weight: 700; font-size: 16px; cursor: pointer; }
 button.cam { background: #f59e0b; font-size: 14px; padding: 12px; }
 button.kirim { background: var(--success); }
 button.logout { background: rgba(255,255,255,0.2); }
-button.export { background: #2563eb; }
-img { max-width: 100%; margin: 8px 0; border-radius: 12px; }
+button.export { background: #2563eb; padding: 12px; font-size: 14px; margin-bottom: 12px; }
+canvas { max-width: 100%; margin: 8px 0; border-radius: 12px; border: 2px solid rgba(255,255,255,0.3); }
 .menu { display: flex; gap: 8px; margin-bottom: 16px; }
-.menu button { flex: 1; font-size: 12px; padding: 12px 8px; }
+.menu button { flex: 1; font-size: 11px; padding: 10px 6px; border-radius: 12px; }
 .cam-group { display: flex; gap: 8px; }
 .cam-group button { flex: 1; }
-table { width: 100%; background: #fff; border-radius: 12px; font-size: 12px; color: #333; border-collapse: collapse; }
-th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; white-space: nowrap; }
-th { background: #2563eb; color: white; font-weight: 700; }
-h2, h3 { text-align: center; color: #fff; margin: 0 0 20px 0; }
+table { width: 100%; background: #fff; border-radius: 12px; font-size: 11px; color: #333; border-collapse: collapse; min-width: 500px; }
+th, td { padding: 8px 6px; border-bottom: 1px solid #eee; text-align: left; white-space: nowrap; }
+th { background: #2563eb; color: white; font-weight: 700; font-size: 10px; position: sticky; top: 0; }
+tr:nth-child(even) { background: #f8fafc; }
+tr:hover { background: #e0f2fe; }
+td img { width: 45px; height: 45px; object-fit: cover; border-radius: 6px; cursor: pointer; }
+.overflow-x { overflow-x: auto; border-radius: 12px; max-height: 400px; overflow-y: auto; }
+h2, h3 { text-align: center; color: #fff; margin: 0 0 12px 0; font-size: 18px; }
 .text-red { color: var(--danger)!important; font-weight: 700; }
 .text-green { color: var(--success)!important; font-weight: 700; }
-.text-muted { color: #94a3b8; font-style: italic; }
-.overflow-x { overflow-x: auto; }
+.info-lokasi { font-size: 11px; color: #e2e8f0; margin-top: 4px; text-align: center; }
 </style>
 </head>
 <body>
@@ -39,9 +42,9 @@ h2, h3 { text-align: center; color: #fff; margin: 0 0 20px 0; }
 <div id="loginPage">
   <div class="card">
     <h2>🔐 Login Absensi</h2>
-    <input id="emailLogin" placeholder="Masukkan Email">
-    <input id="passLogin" type="password" placeholder="Masukkan Password">
-    <button type="button" onclick="login()">Masuk 🚀</button>
+    <input id="emailLogin" placeholder="Masukkan Email" autocomplete="off">
+    <input id="passLogin" type="password" placeholder="Masukkan Password" autocomplete="off">
+    <button type="button" onclick="try{login()}catch(e){alert('Error JS: '+e.message)}">Masuk 🚀</button>
     <p id="loginStatus" style="color:#ff6b6b;text-align:center;font-weight:700"></p>
   </div>
 </div>
@@ -68,11 +71,12 @@ h2, h3 { text-align: center; color: #fff; margin: 0 0 20px 0; }
     <input id="jamMasuk" type="time" onchange="cekJamMasuk()">
     <label>Foto Selfie</label>
     <div class="cam-group">
-      <button type="button" class="cam" onclick="ambilFoto('foto1', 'user')">📱 Depan</button>
-      <button type="button" class="cam" onclick="ambilFoto('foto1', 'environment')">📷 Belakang</button>
+      <button type="button" class="cam" onclick="ambilFoto('foto1', 'user', 'canvas1', 'info1')">📱 Depan</button>
+      <button type="button" class="cam" onclick="ambilFoto('foto1', 'environment', 'canvas1', 'info1')">📷 Belakang</button>
     </div>
     <input type="file" id="foto1" accept="image/*" style="display:none">
-    <img id="preview1">
+    <canvas id="canvas1"></canvas>
+    <div class="info-lokasi" id="info1">Ambil foto dulu</div>
     <button type="button" class="kirim" onclick="kirimMasuk()">🚀 Kirim Absen Masuk</button>
     <button type="button" onclick="showKry('kry2')">Next →</button>
     <p id="status1"></p>
@@ -90,11 +94,12 @@ h2, h3 { text-align: center; color: #fff; margin: 0 0 20px 0; }
     <input id="jamPulang" type="time" onchange="cekJamPulang()">
     <label>Foto Selfie</label>
     <div class="cam-group">
-      <button type="button" class="cam" onclick="ambilFoto('foto2', 'user')">📱 Depan</button>
-      <button type="button" class="cam" onclick="ambilFoto('foto2', 'environment')">📷 Belakang</button>
+      <button type="button" class="cam" onclick="ambilFoto('foto2', 'user', 'canvas2', 'info2')">📱 Depan</button>
+      <button type="button" class="cam" onclick="ambilFoto('foto2', 'environment', 'canvas2', 'info2')">📷 Belakang</button>
     </div>
     <input type="file" id="foto2" accept="image/*" style="display:none">
-    <img id="preview2">
+    <canvas id="canvas2"></canvas>
+    <div class="info-lokasi" id="info2">Ambil foto dulu</div>
     <button type="button" class="kirim" onclick="kirimPulang()">🚀 Kirim Absen Pulang</button>
     <button type="button" onclick="showKry('kry3')">Next →</button>
     <p id="status2"></p>
@@ -129,33 +134,77 @@ h2, h3 { text-align: center; color: #fff; margin: 0 0 20px 0; }
   </div>
 
   <div id="adm1" class="card">
-    <h3>Data Absen Masuk</h3>
+    <h3>📍 Data Absen Masuk</h3>
     <button type="button" class="export" onclick="exportExcel('masuk')">📊 Export Excel</button>
-    <div class="overflow-x"><table><thead><tr><th>No</th><th>Nama</th><th>ID</th><th>Tanggal</th><th>Jam</th><th>Status</th><th>Foto</th></tr></thead><tbody id="tabelMasuk"></tbody></table></div>
+    <div class="overflow-x">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:40px">No</th>
+            <th>Nama</th>
+            <th>ID</th>
+            <th>Tanggal</th>
+            <th>Jam</th>
+            <th>Status</th>
+            <th style="width:60px">Foto</th>
+          </tr>
+        </thead>
+        <tbody id="tabelMasuk"></tbody>
+      </table>
+    </div>
   </div>
 
   <div id="adm2" class="card" style="display:none">
-    <h3>Data Absen Pulang</h3>
+    <h3>🏠 Data Absen Pulang</h3>
     <button type="button" class="export" onclick="exportExcel('pulang')">📊 Export Excel</button>
-    <div class="overflow-x"><table><thead><tr><th>No</th><th>Nama</th><th>ID</th><th>Tanggal</th><th>Jam</th><th>Status</th><th>Foto</th></tr></thead><tbody id="tabelPulang"></tbody></table></div>
+    <div class="overflow-x">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:40px">No</th>
+            <th>Nama</th>
+            <th>ID</th>
+            <th>Tanggal</th>
+            <th>Jam</th>
+            <th>Status</th>
+            <th style="width:60px">Foto</th>
+          </tr>
+        </thead>
+        <tbody id="tabelPulang"></tbody>
+      </table>
+    </div>
   </div>
 
   <div id="adm3" class="card" style="display:none">
-    <h3>Data Sanggahan</h3>
+    <h3>📝 Data Sanggahan</h3>
     <div class="overflow-x"><table><thead><tr><th>No</th><th>Tgl</th><th>Nama</th><th>ID</th><th>Ket</th><th>Type</th><th>Foto</th></tr></thead><tbody id="tabelSanggah"></tbody></table></div>
   </div>
 </div>
 
 <script>
+// GANTI INI PAKE PUNYA KAMU
 const SUPABASE_URL = 'https://fkffpkyjxjtqdjcwechg.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrZmZwa3lqeGp0cWRqY3dlY2hnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5ODc0OTEsImV4cCI6MjA5NjU2MzQ5MX0.3ewhHcp3m15pGSxVIvBzULgs36cKK2cD9VLHpLz_Igo';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ERROR HANDLER GLOBAL
+window.onerror = function(msg, url, line) {
+  alert('ERROR JS:\n' + msg + '\nLine: ' + line);
+  return false;
+}
+
+// CEK SUPABASE KELOAD APA ENGGA
+if(typeof supabase === 'undefined'){
+  alert('❌ Gagal load Supabase! Matikan data, pake WiFi. 4G kamu lemot');
+}
+
 let userEmail = '';
 let dataMasukGlobal = [];
 let dataPulangGlobal = [];
+let lokasiGPS = { lat: null, lng: null };
 
 function formatTanggal(tgl){
-  if(!tgl || tgl === 'null') return '<span class="text-muted">-</span>';
+  if(!tgl || tgl === 'null') return '-';
   const date = new Date(tgl);
   if(isNaN(date)) return tgl;
   const opsi = { day: '2-digit', month: 'short', year: 'numeric' };
@@ -197,7 +246,12 @@ function cekJamPulang(){
 function login(){
   const email = document.getElementById('emailLogin').value.trim();
   const pass = document.getElementById('passLogin').value.trim();
-  if(pass!== 'Admin123'){ document.getElementById('loginStatus').textContent = '❌ Password salah!'; return; }
+
+  if(pass!== 'Admin123'){
+    document.getElementById('loginStatus').textContent = '❌ Password salah! Pake: Admin123';
+    return;
+  }
+
   if(email === 'karyawan@kantor.com'){
     userEmail = email;
     document.getElementById('loginPage').style.display = 'none';
@@ -205,6 +259,7 @@ function login(){
     document.getElementById('user1').value = email;
     document.getElementById('user2').value = email;
     setWaktu();
+    getGPS();
   }
   else if(email === 'dashboard@kantor.com'){
     userEmail = email;
@@ -213,7 +268,9 @@ function login(){
     showAdm('adm1');
     loadSemua();
   }
-  else { document.getElementById('loginStatus').textContent = '❌ Email salah!'; }
+  else {
+    document.getElementById('loginStatus').textContent = '❌ Email salah!';
+  }
 }
 
 function logout(){
@@ -240,29 +297,102 @@ function showAdm(id){
   document.getElementById(id).style.display = 'block';
 }
 
-function ambilFoto(inputId, facingMode){
+function getGPS(){
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(pos => {
+      lokasiGPS.lat = pos.coords.latitude;
+      lokasiGPS.lng = pos.coords.longitude;
+    }, err => console.log('GPS error:', err), {enableHighAccuracy: true, timeout: 10000});
+  }
+}
+
+function ambilFoto(inputId, facingMode, canvasId, infoId){
   const input = document.getElementById(inputId);
   input.setAttribute('capture', facingMode);
+  input.onchange = e => prosesFoto(e, canvasId, infoId);
   input.click();
 }
 
-document.getElementById('foto1').onchange = e => { if(e.target.files[0]) document.getElementById('preview1').src = URL.createObjectURL(e.target.files[0]); };
-document.getElementById('foto2').onchange = e => { if(e.target.files[0]) document.getElementById('preview2').src = URL.createObjectURL(e.target.files[0]); };
-document.getElementById('foto3').onchange = e => { if(e.target.files[0]) document.getElementById('preview3').src = URL.createObjectURL(e.target.files[0]); };
+function prosesFoto(e, canvasId, infoId){
+  const file = e.target.files[0];
+  if(!file) return;
 
-async function uploadFoto(file, folder){
-  if(!file) return '';
-  const namaFile = folder + '/' + Date.now() + '-' + file.name;
-  const { data, error } = await db.storage.from('foto-absen').upload(namaFile, file);
-  if(error){ alert('Upload gagal: ' + error.message); return ''; }
-  return db.storage.from('foto-absen').getPublicUrl(namaFile).data.publicUrl;
+  const canvas = document.getElementById(canvasId);
+  const ctx = canvas.getContext('2d');
+  const img = new Image();
+  const reader = new FileReader();
+
+  reader.onload = function(event){
+    img.onload = function(){
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+
+      const now = new Date();
+      const tgl = now.toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'});
+      const jam = now.toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+      const lat = lokasiGPS.lat? lokasiGPS.lat.toFixed(6) : '0.000';
+      const lng = lokasiGPS.lng? lokasiGPS.lng.toFixed(6) : '0.000';
+
+      ctx.fillStyle = 'rgba(0,0,0,0.8)';
+      ctx.fillRect(0, canvas.height - 110, canvas.width, 110);
+
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 34px Arial';
+      ctx.fillText(jam, 25, canvas.height - 65);
+      ctx.font = '24px Arial';
+      ctx.fillText(tgl, 25, canvas.height - 30);
+      ctx.font = '20px Arial';
+      ctx.fillText(`📍 ${lat}, ${lng}`, 25, canvas.height - 5);
+
+      if(lokasiGPS.lat && lokasiGPS.lng){
+        const mapSize = Math.min(canvas.width * 0.28, 160);
+        const mapX = canvas.width - mapSize - 15;
+        const mapY = 15;
+
+        ctx.fillStyle = 'white';
+        ctx.fillRect(mapX-3, mapY-3, mapSize+6, mapSize+6);
+
+        const mapImg = new Image();
+        mapImg.crossOrigin = 'anonymous';
+        mapImg.src = `https://static-maps.yandex.ru/1.x/?lang=id_ID&ll=${lng},${lat}&z=17&l=map&size=${mapSize},${mapSize}&pt=${lng},${lat},pm2rdl`;
+
+        mapImg.onload = function(){
+          ctx.drawImage(mapImg, mapX, mapY, mapSize, mapSize);
+          ctx.strokeStyle = '#2563eb';
+          ctx.lineWidth = 4;
+          ctx.strokeRect(mapX, mapY, mapSize, mapSize);
+          document.getElementById(infoId).textContent = `✅ Foto siap | Map nempel | ${lat}, ${lng}`;
+        };
+        mapImg.onerror = function(){
+          document.getElementById(infoId).textContent = `📍 ${lat}, ${lng} | 🕐 ${tgl} ${jam}`;
+        };
+      } else {
+        document.getElementById(infoId).textContent = `⚠️ GPS mati | 🕐 ${tgl} ${jam}`;
+      }
+    };
+    img.src = event.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function uploadFoto(canvasId, folder){
+  const canvas = document.getElementById(canvasId);
+  return new Promise(resolve => {
+    canvas.toBlob(async blob => {
+      const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
+      const namaFile = folder + '/' + Date.now() + '-' + file.name;
+      const { data, error } = await db.storage.from('foto-absen').upload(namaFile, file);
+      if(error){ alert('Upload gagal: ' + error.message); resolve(''); }
+      resolve(db.storage.from('foto-absen').getPublicUrl(namaFile).data.publicUrl);
+    }, 'image/jpeg', 0.85);
+  });
 }
 
 async function kirimMasuk(){
   const status = document.getElementById('status1');
   status.textContent = '⏳ Mengirim...';
-  const file = document.getElementById('foto1').files[0];
-  const fotoUrl = await uploadFoto(file, 'masuk');
+  const fotoUrl = await uploadFoto('canvas1', 'masuk');
   const { error } = await db.from('absen_masuk').insert([{
     username: userEmail,
     id_manual: document.getElementById('id1').value,
@@ -270,7 +400,9 @@ async function kirimMasuk(){
     id_karyawan: document.getElementById('idKar1').value,
     foto_masuk: fotoUrl,
     tanggal_masuk: document.getElementById('tanggalMasuk').value,
-    jam_masuk: document.getElementById('jamMasuk').value + ':00'
+    jam_masuk: document.getElementById('jamMasuk').value + ':00',
+    latitude: lokasiGPS.lat,
+    longitude: lokasiGPS.lng
   }]);
   status.textContent = error? '❌ Gagal: ' + error.message : '✅ Terkirim!';
 }
@@ -278,8 +410,7 @@ async function kirimMasuk(){
 async function kirimPulang(){
   const status = document.getElementById('status2');
   status.textContent = '⏳ Mengirim...';
-  const file = document.getElementById('foto2').files[0];
-  const fotoUrl = await uploadFoto(file, 'pulang');
+  const fotoUrl = await uploadFoto('canvas2', 'pulang');
   const { error } = await db.from('absen_pulang').insert([{
     username: userEmail,
     id_manual: document.getElementById('id2').value,
@@ -287,7 +418,9 @@ async function kirimPulang(){
     id_karyawan: document.getElementById('idKar2').value,
     foto_pulang: fotoUrl,
     tanggal_pulang: document.getElementById('tanggalPulang').value,
-    jam_pulang: document.getElementById('jamPulang').value + ':00'
+    jam_pulang: document.getElementById('jamPulang').value + ':00',
+    latitude: lokasiGPS.lat,
+    longitude: lokasiGPS.lng
   }]);
   status.textContent = error? '❌ Gagal: ' + error.message : '✅ Terkirim!';
 }
@@ -296,7 +429,10 @@ async function kirimSanggahan(){
   const status = document.getElementById('status3');
   status.textContent = '⏳ Mengirim...';
   const file = document.getElementById('foto3').files[0];
-  const fotoUrl = await uploadFoto(file, 'sanggahan');
+  if(!file){ alert('Upload bukti dulu'); return; }
+  const namaFile = 'sanggahan/' + Date.now() + '-' + file.name;
+  const { data, error: errUp } = await db.storage.from('foto-absen').upload(namaFile, file);
+  const fotoUrl = errUp? '' : db.storage.from('foto-absen').getPublicUrl(namaFile).data.publicUrl;
   const { error } = await db.from('sanggahan').insert([{
     tanggal: document.getElementById('tanggal3').value,
     nama: document.getElementById('nama3').value,
@@ -324,7 +460,7 @@ function renderMasuk(){
   document.getElementById('tabelMasuk').innerHTML = dataMasukGlobal.map((r,i) => {
     const jam = r.jam_masuk? r.jam_masuk.slice(0,5) : '-';
     const statusJam = jam > '07:00'? '<span class="text-red">Terlambat</span>' : '<span class="text-green">Tepat</span>';
-    return `<tr><td>${i+1}</td><td>${r.nama}</td><td>${r.id_karyawan}</td><td>${formatTanggal(r.tanggal_masuk)}</td><td>${jam}</td><td>${statusJam}</td><td>${r.foto_masuk? `<img src="${r.foto_masuk}" style="width:50px" onclick="window.open(this.src)">` : '-'}</td></tr>`;
+    return `<tr><td>${i+1}</td><td>${r.nama}</td><td>${r.id_karyawan}</td><td>${formatTanggal(r.tanggal_masuk)}</td><td>${jam}</td><td>${statusJam}</td><td>${r.foto_masuk? `<img src="${r.foto_masuk}" onclick="window.open(this.src)">` : '-'}</td></tr>`;
   }).join('');
 }
 
@@ -343,52 +479,34 @@ function renderPulang(){
   document.getElementById('tabelPulang').innerHTML = dataPulangGlobal.map((r,i) => {
     const jam = r.jam_pulang? r.jam_pulang.slice(0,5) : '-';
     const statusJam = jam < '21:00'? '<span class="text-red">Pulang Cepat</span>' : '<span class="text-green">Normal</span>';
-    return `<tr><td>${i+1}</td><td>${r.nama}</td><td>${r.id_karyawan}</td><td>${formatTanggal(r.tanggal_pulang)}</td><td>${jam}</td><td>${statusJam}</td><td>${r.foto_pulang? `<img src="${r.foto_pulang}" style="width:50px" onclick="window.open(this.src)">` : '-'}</td></tr>`;
+    return `<tr><td>${i+1}</td><td>${r.nama}</td><td>${r.id_karyawan}</td><td>${formatTanggal(r.tanggal_pulang)}</td><td>${jam}</td><td>${statusJam}</td><td>${r.foto_pulang? `<img src="${r.foto_pulang}" onclick="window.open(this.src)">` : '-'}</td></tr>`;
   }).join('');
 }
 
-async function loadSanggah(){
-  const { data } = await db.from('sanggahan').select('*').order('tanggal', {ascending: false}).limit(200);
-  document.getElementById('tabelSanggah').innerHTML = data.map((r,i) => `<tr><td>${i+1}</td><td>${formatTanggal(r.tanggal)}</td><td>${r.nama}</td><td>${r.id_karyawan}</td><td>${r.keterangan}</td><td>${r.type}</td><td>${r.foto? `<img src="${r.foto}" style="width:50px" onclick="window.open(this.src)">` : '-'}</td></tr>`).join('');
-}
-
-function loadSemua(){ loadMasuk(); loadPulang(); loadSanggah(); }
+function loadSemua(){ loadMasuk(); loadPulang(); }
 setInterval(loadSemua, 15000);
 
-// EXPORT PAKAI PROMPT FILTER
 function exportExcel(type){
   const data = type === 'masuk'? dataMasukGlobal : dataPulangGlobal;
-
-  if(data.length === 0){
-    alert('⚠️ Data kosong! Belum ada absen ' + type);
-    return;
-  }
-
-  // Munculin prompt buat filter nama
-  const namaFilter = prompt('Filter Nama Karyawan\nKosongkan untuk export semua data:\n', '');
+  if(data.length === 0){ alert('⚠️ Data kosong!'); return; }
+  const namaFilter = prompt('Filter Nama Karyawan\nKosongkan untuk export semua:', '');
   const filter = namaFilter? namaFilter.toLowerCase() : '';
   const filtered = filter? data.filter(r => r.nama.toLowerCase().includes(filter)) : data;
+  if(filtered.length === 0){ alert('⚠️ Data tidak ditemukan'); return; }
 
-  if(filtered.length === 0){
-    alert('⚠️ Data tidak ditemukan untuk nama: ' + namaFilter);
-    return;
-  }
-
-  const wsData = [['No','Nama','ID Karyawan','Tanggal','Jam', type === 'masuk'? 'Status Masuk' : 'Status Pulang']];
+  const wsData = [['No','Nama','ID Karyawan','Tanggal','Jam', type === 'masuk'? 'Status Masuk' : 'Status Pulang', 'Latitude', 'Longitude']];
   filtered.forEach((r,i) => {
     const jam = type === 'masuk'? (r.jam_masuk? r.jam_masuk.slice(0,5) : '-') : (r.jam_pulang? r.jam_pulang.slice(0,5) : '-');
-    const tgl = type === 'masuk'? formatTanggal(r.tanggal_masuk).replace(/<[^>]*>/g,'') : formatTanggal(r.tanggal_pulang).replace(/<[^>]*>/g,'');
+    const tgl = type === 'masuk'? formatTanggal(r.tanggal_masuk) : formatTanggal(r.tanggal_pulang);
     const status = type === 'masuk'? (jam > '07:00'? 'Terlambat' : 'Tepat Waktu') : (jam < '21:00'? 'Pulang Cepat' : 'Normal');
-    wsData.push([i+1, r.nama, r.id_karyawan, tgl, jam, status]);
+    wsData.push([i+1, r.nama, r.id_karyawan, tgl, jam, status, r.latitude || '', r.longitude || '']);
   });
 
   const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [{wch: 5}, {wch: 25}, {wch: 15}, {wch: 15}, {wch: 10}, {wch: 15}];
+  ws['!cols'] = [{wch: 5}, {wch: 25}, {wch: 15}, {wch: 15}, {wch: 10}, {wch: 15}, {wch: 12}, {wch: 12}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, type === 'masuk'? 'Absen Masuk' : 'Absen Pulang');
-
-  const namaFile = filter? `Absensi_${type}_filter-${filter}_${new Date().toISOString().split('T')[0]}.xlsx` : `Absensi_${type}_all_${new Date().toISOString().split('T')[0]}.xlsx`;
-  XLSX.writeFile(wb, namaFile);
+  XLSX.writeFile(wb, `Absensi_${type}_${new Date().toISOString().split('T')[0]}.xlsx`);
   alert(`✅ Export berhasil! ${filtered.length} data`);
 }
 </script>
