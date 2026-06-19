@@ -26,11 +26,10 @@ canvas { max-width: 100%; margin: 8px 0; border-radius: 12px; border: 2px solid 
 .cam-group button { flex: 1; }
 table { width: 100%; background: #fff; border-radius: 12px; font-size: 11px; color: #333; border-collapse: collapse; min-width: 500px; }
 th, td { padding: 8px 6px; border-bottom: 1px solid #eee; text-align: left; white-space: nowrap; }
-th { background: #2563eb; color: white; font-weight: 700; font-size: 10px; position: sticky; top: 0; }
+th { background: #2563eb; color: white; font-weight: 700; font-size: 10px; position: sticky; top: 0; z-index: 1; }
 tr:nth-child(even) { background: #f8fafc; }
 tr:hover { background: #e0f2fe; }
 td img { width: 45px; height: 45px; object-fit: cover; border-radius: 6px; cursor: pointer; }
-.overflow-x { overflow-x: auto; border-radius: 12px; max-height: 400px; overflow-y: auto; }
 h2, h3 { text-align: center; color: #fff; margin: 0 0 12px 0; font-size: 18px; }
 .text-red { color: var(--danger)!important; font-weight: 700; }
 .text-green { color: var(--success)!important; font-weight: 700; }
@@ -133,10 +132,13 @@ h2, h3 { text-align: center; color: #fff; margin: 0 0 12px 0; font-size: 18px; }
     </div>
   </div>
 
+  <!-- TABEL MUNCUL KETUTUP DEFAULT -->
   <div id="adm1" class="card">
     <h3>📍 Data Absen Masuk</h3>
     <button type="button" class="export" onclick="exportExcel('masuk')">📊 Export Excel</button>
-    <div class="overflow-x">
+    <button type="button" class="export" onclick="toggleTabel('tabelMasukWrapper', this)" style="background:#64748b">👁️ Tampilkan</button>
+
+    <div id="tabelMasukWrapper" style="display:none; overflow-x:auto; max-height:300px; overflow-y:auto; border-radius:12px; transition:0.3s">
       <table>
         <thead>
           <tr>
@@ -157,7 +159,9 @@ h2, h3 { text-align: center; color: #fff; margin: 0 0 12px 0; font-size: 18px; }
   <div id="adm2" class="card" style="display:none">
     <h3>🏠 Data Absen Pulang</h3>
     <button type="button" class="export" onclick="exportExcel('pulang')">📊 Export Excel</button>
-    <div class="overflow-x">
+    <button type="button" class="export" onclick="toggleTabel('tabelPulangWrapper', this)" style="background:#64748b">👁️ Tampilkan</button>
+
+    <div id="tabelPulangWrapper" style="display:none; overflow-x:auto; max-height:300px; overflow-y:auto; border-radius:12px; transition:0.3s">
       <table>
         <thead>
           <tr>
@@ -177,7 +181,16 @@ h2, h3 { text-align: center; color: #fff; margin: 0 0 12px 0; font-size: 18px; }
 
   <div id="adm3" class="card" style="display:none">
     <h3>📝 Data Sanggahan</h3>
-    <div class="overflow-x"><table><thead><tr><th>No</th><th>Tgl</th><th>Nama</th><th>ID</th><th>Ket</th><th>Type</th><th>Foto</th></tr></thead><tbody id="tabelSanggah"></tbody></table></div>
+    <button type="button" class="export" onclick="toggleTabel('tabelSanggahWrapper', this)" style="background:#64748b">👁️ Tampilkan</button>
+
+    <div id="tabelSanggahWrapper" style="display:none; overflow-x:auto; max-height:300px; overflow-y:auto; border-radius:12px; transition:0.3s">
+      <table>
+        <thead>
+          <tr><th>No</th><th>Tgl</th><th>Nama</th><th>ID</th><th>Ket</th><th>Type</th><th>Foto</th></tr>
+        </thead>
+        <tbody id="tabelSanggah"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -187,15 +200,14 @@ const SUPABASE_URL = 'https://fkffpkyjxjtqdjcwechg.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrZmZwa3lqeGp0cWRqY3dlY2hnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5ODc0OTEsImV4cCI6MjA5NjU2MzQ5MX0.3ewhHcp3m15pGSxVIvBzULgs36cKK2cD9VLHpLz_Igo';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// ERROR HANDLER GLOBAL
+// ERROR HANDLER
 window.onerror = function(msg, url, line) {
   alert('ERROR JS:\n' + msg + '\nLine: ' + line);
   return false;
 }
 
-// CEK SUPABASE KELOAD APA ENGGA
 if(typeof supabase === 'undefined'){
-  alert('❌ Gagal load Supabase! Matikan data, pake WiFi. 4G kamu lemot');
+  alert('❌ Gagal load Supabase! Pake WiFi. 4G kamu lemot');
 }
 
 let userEmail = '';
@@ -295,6 +307,18 @@ function showAdm(id){
   document.getElementById('adm2').style.display = 'none';
   document.getElementById('adm3').style.display = 'none';
   document.getElementById(id).style.display = 'block';
+}
+
+// FUNGSI TOGGLE TABEL BARU
+function toggleTabel(id, btn){
+  const div = document.getElementById(id);
+  if(div.style.display === 'none'){
+    div.style.display = 'block';
+    btn.textContent = '👁️ Sembunyikan';
+  } else {
+    div.style.display = 'none';
+    btn.textContent = '👁️ Tampilkan';
+  }
 }
 
 function getGPS(){
@@ -483,7 +507,15 @@ function renderPulang(){
   }).join('');
 }
 
-function loadSemua(){ loadMasuk(); loadPulang(); }
+async function loadSanggah(){
+  const { data, error } = await db.from('sanggahan').select('*').order('tanggal', {ascending: false}).limit(200);
+  if(error){ alert('Error load sanggah: ' + error.message); return; }
+  document.getElementById('tabelSanggah').innerHTML = data.map((r,i) =>
+    `<tr><td>${i+1}</td><td>${formatTanggal(r.tanggal)}</td><td>${r.nama}</td><td>${r.id_karyawan}</td><td>${r.keterangan}</td><td>${r.type}</td><td>${r.foto? `<img src="${r.foto}" onclick="window.open(this.src)">` : '-'}</td></tr>`
+  ).join('');
+}
+
+function loadSemua(){ loadMasuk(); loadPulang(); loadSanggah(); }
 setInterval(loadSemua, 15000);
 
 function exportExcel(type){
